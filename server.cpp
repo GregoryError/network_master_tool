@@ -8,7 +8,11 @@
 server::server(uint16_t nPort, QObject *parent) : QObject(parent)
 {
     mng = new QNetworkAccessManager;
-    connect(mng, &QNetworkAccessManager::finished, [=](QNetworkReply *reply){ sendToClient(reply->readAll()); });
+    connect(mng, &QNetworkAccessManager::finished, [=](QNetworkReply *reply) {
+        if (reply->error() != QNetworkReply::NoError)
+            sendToClient(reply->errorString());
+        sendToClient(reply->readAll());
+    });
 
     m_server =  new QTcpServer(this);
     connect(m_server, SIGNAL(newConnection()), this, SLOT(slotNewConnection()));
@@ -31,7 +35,7 @@ void server::slotReadClient()
 {
     m_socket = (QTcpSocket*)sender();
     QString socket_content(m_socket->readAll());
-    if (socket_content.left(3) == "mac") // http://192.168.1.20/cgi-bin/ramon/mac.pl?a=mac&ip=250.213
+    if (socket_content.left(3) == "mac")
         mng->get((QNetworkRequest(QUrl("http://192.168.1.20/cgi-bin/ramon/mac.pl?a=mac&ip=" + socket_content.mid(3)))));
     if (socket_content.left(3) == "cab")
         mng->get((QNetworkRequest(QUrl("http://192.168.1.20/cgi-bin/ramon/mac.pl?a=cab&ip=" + socket_content.mid(3)))));
